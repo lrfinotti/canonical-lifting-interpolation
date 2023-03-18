@@ -1,0 +1,212 @@
+load "new_canonical_lifting.magma";
+
+function get_ab_powers(w)
+    //w := Integers()!w;
+    if w mod 2 ne 0 then
+        return [];
+    end if;
+    
+    powers := [];
+    lb := Ceiling(w/6);
+    ub := Floor(w/4);
+    for k in [ub..lb by -1] do
+        Append(~powers, <-w div 2 + 3*k, w div 2 - 2*k>);
+    end for;
+    return powers;
+end function;
+
+function canonical_lifting_odd_char_interpolate_formulas(p, prec)
+    // Set up final base ring
+    F<a,b> := FunctionField(GF(p), 2);
+    S<x,y> := PolynomialRing(F, 2);
+    
+    va := [S!a]; vb := [S!b];
+    vF := [x]; vH := [S!1]; vy := [y];
+    
+    // Calculate the Hasse invariant formula
+    f := x^3 + a*x + b;
+    h := F!Coefficient(f^((p-1) div 2), x, p-1);
+    
+    // Determine the ring for j-invariants
+    max_weight := 6*p^(prec-1); // weight of b_{prec-1}
+    max_unknowns := Floor(max_weight/4) - Ceiling(max_weight/6) + 1;
+    r := Ceiling(Log(p, max_unknowns + p^2)); // Add p^2 to account for supersingular j-invariants
+    B := GF(p^r);
+    
+    // Setup ring to be passed to one_step function
+    R<x0,y0,Fn,Hn,an,bn> := PolynomialRing(B, 6);
+    
+    // Compute x/y ahead of time, if necessary
+    if prec gt 2 then
+        P := FieldOfFractions(PolynomialRing(GF(p), prec*2));
+        x_vec := [P.i : i in [1..prec]];
+        y_vec := [P.i : i in [prec+1..2*prec]];
+        x_over_y_witt := WittDiv(x_vec, y_vec);
+    else
+        x_over_y_witt := 0;
+    end if;
+    
+    for n in [1..(prec-1)] do
+        h_power := Integers()!(n*p^(n-1) + (n-1)*p^(n-2));
+        denom_weight := (p-1)*h_power;
+        
+        // Set up matrices and calculate exponents
+        an_numerator_weight := 4*p^n + denom_weight;
+        an_numerator_powers := get_ab_powers(an_numerator_weight);
+        an_unknown_count := #an_numerator_powers;
+        an_matr := [];
+        an_result := [];
+        
+        bn_numerator_weight := 6*p^n + denom_weight;
+        bn_numerator_powers := get_ab_powers(bn_numerator_weight);
+        bn_unknown_count := #bn_numerator_powers;
+        bn_matr := [];
+        bn_result := [];
+        
+        ci_numerator_powers := [];
+        ci_unknown_counts := [];
+        Fn_degree_bound := ((n+2)*p^n - n*p^(n-1)) div 2;
+        num_cis := Fn_degree_bound div p + 1;
+        for i in [1..num_cis] do
+            ci_numerator_weight := 2*p^n - 2*(i-1)*p + denom_weight;
+            powers := get_ab_powers(ci_numerator_weight);
+            Append(~ci_numerator_powers, powers);
+            Append(~ci_unknown_counts, #powers);
+        end for;
+        ci_matrs := [* [] : l in [1..num_cis] *];
+        ci_results := [* [] : l in [1..num_cis] *];
+        
+        di_numerator_powers := [];
+        di_unknown_counts := [];
+        num_dis := ((n+3)*p^n - n*p^(n-1) - 3) div 2 + 1;
+        for i in [1..num_dis] do
+            di_numerator_weight := 3*p^n - 3 - 2*(i-1) + denom_weight;
+            powers := get_ab_powers(di_numerator_weight);
+            Append(~di_numerator_powers, powers);
+            Append(~di_unknown_counts, #powers);
+        end for;
+        di_matrs := [* [] : l in di_numerator_powers *];
+        di_results := [* [] : l in di_numerator_powers *];
+        
+        // Interpolate
+        for j in B do
+            // Get a new elliptic curve
+            E := WeierstrassModel(EllipticCurveFromjInvariant(j));
+            a0 := B!Coefficients(E)[4];
+            b0 := B!Coefficients(E)[4];
+            f := x0^3 + a0*x0 + b0;
+            h0 := B!Coefficient(f^((p-1) div 2), x0, p-1);
+            if h0 eq 0 then
+                continue;
+            end if;
+            h0_to_power := h0^h_power;
+            
+            // Calculate first n coordinates of canonical lifting
+            phi := hom< F -> B | a0, b0>;
+            psi := hom< S -> R | phi, x0, y0>;
+            va0 := [phi(ai) : ai in va];
+            vb0 := [phi(bi) : bi in vb];
+            vF0 := [psi(Fi) : Fi in vF];
+            vH0 := [psi(Hi) : Hi in vH];
+            vy0 := [y0*Hi : Hi in vH0];
+            
+            // Get the next step of the canonical lifting
+            an, bn, Fn, Hn := canonical_lifting_odd_char_one_step(
+                a0, b0, p, n, prec,
+                f, h0,
+                va0, vb0, vF0, vH0, vy0,
+                B, R, x_over_y_witt,
+                0, false
+            );
+            
+            done := true;
+            
+            // Add to system for an
+            if Rank(Matrix(B, an_matr)) lt an_unknown_count then
+                done := false;
+                next_row := [a0^t[1] * b0^t[2] / h0_to_power : t in an_numerator_powers];
+                Append(~an_matr, next_row);
+                Append(~an_result, B!an);
+            end if;
+            
+            // Add to system for bn
+            if Rank(Matrix(B, bn_matr)) lt bn_unknown_count then
+                done := false;
+                next_row := [a0^t[1] * b0^t[2] / h0_to_power : t in bn_numerator_powers];
+                Append(~bn_matr, next_row);
+                Append(~bn_result, B!bn);
+            end if;
+            
+            // Add to system for c_i
+            for k in [1..num_cis] do
+                if Rank(Matrix(B, ci_matrs[k])) lt ci_unknown_counts[k] then
+                    done := false;
+                    next_row := [a0^t[1] * b0^t[2] / h0_to_power : t in ci_numerator_powers[k]];
+                    Append(~(ci_matrs[k]), next_row);
+                    Append(~(ci_results[k]), Coefficient(Fn, x0, (k-1)*p));
+                end if;
+            end for;
+            
+            // Add to system for d_i
+            for k in [1..num_dis] do
+                if Rank(Matrix(B, di_matrs[k])) lt di_unknown_counts[k] then
+                    done := false;
+                    next_row := [a0^t[1] * b0^t[2] / h0_to_power : t in di_numerator_powers[k]];
+                    Append(~(di_matrs[k]), next_row);
+                    Append(~(di_results[k]), Coefficient(Hn, x0, k-1));
+                end if;
+            end for;
+            
+            if done then
+                break;
+            end if;
+        end for;
+        
+        // Compute Fn without unknowns
+        Fn_deriv := h^(-(p^n - 1) div (p - 1)) * (x^3 + a*x + b)^((p^n - 1) div 2) - x^(p^n - 1);
+        for j in [1 .. (n-1)] do
+            Fn_deriv := Fn_deriv - vF[j+1]^(p^(n-j) - 1) * Derivative(vF[j+1], x);
+        end for;
+        
+        Fn_hat := S!0;
+        for d in [0 .. Degree(Fn_deriv)] do
+            if ((d+1) mod p) ne 0 then
+                Fn_hat +:= Coefficient(Fn_deriv, x, d)/(d+1) * x^(d+1);
+            end if;
+        end for;
+        
+        // Solve the systems
+        soln := Solution(Transpose(Matrix(B, an_matr)), Vector(B, an_result));
+        an := &+[ F!soln[k]*a^t[1]*b^t[2] : k -> t in an_numerator_powers ];
+        an /:= h^h_power;
+        Append(~va, an);
+        
+        soln := Solution(Transpose(Matrix(B, bn_matr)), Vector(B, bn_result));
+        bn := &+[ F!soln[k]*a^t[1]*b^t[2] : k -> t in bn_numerator_powers ];
+        bn /:= h^h_power;
+        Append(~vb, bn);
+        
+        Fn := Fn_hat;
+        for i in [1..num_cis] do
+            soln := Solution(Transpose(Matrix(B, ci_matrs[i])), Vector(B, ci_results[i]));
+            ci := &+[ F!soln[k]*a^t[1]*b^t[2] : k -> t in ci_numerator_powers[i] ];
+            ci /:= h^h_power;
+            Fn +:= ci * x^(p*(i-1));
+        end for;
+        Append(~vF, Fn);
+        
+        Hn := S!0;
+        for i in [1..num_dis] do
+            if #di_matrs[i] eq 0 then
+                continue;
+            end if;
+            soln := Solution(Transpose(Matrix(B, di_matrs[i])), Vector(B, di_results[i]));
+            di := &+[ F!soln[k]*a^t[1]*b^t[2] : k -> t in di_numerator_powers[i] ];
+            di /:= h^h_power;
+            Hn +:= di * x^(i-1);
+        end for;
+        Append(~vH, Hn);
+        Append(~vy, y*Hn);
+    end for;
+    return va, vb, vF, vy;
+end function;
