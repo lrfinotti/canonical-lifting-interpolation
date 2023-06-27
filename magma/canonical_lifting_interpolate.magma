@@ -5,6 +5,21 @@ load "canonical_lifting.magma";
 load "lift.m";  // from https://github.com/lrfinotti/witt
 // load "new_canonical_lifting.magma";
 
+// Magma is not faster computing rank of matrices in echelon form
+// We make our own:
+function echelon_rank(E)
+    // rank of matrix in Echelon form
+    rank := 0;
+    for row in Rows(E) do
+        if not IsZero(row) then
+            rank +:= 1;
+        end if;
+    end for;
+
+    return rank;
+end function;
+
+
 function get_ab_powers(w)
     //w := Integers()!w;
     if w mod 2 ne 0 then
@@ -59,14 +74,18 @@ function canonical_lifting_odd_char_interpolate_formulas(p, prec)
         an_numerator_weight := 4*p^n + denom_weight;
         an_numerator_powers := get_ab_powers(an_numerator_weight);
         an_unknown_count := #an_numerator_powers;
-        an_matr := [];
-        an_result := [];
+        /* an_matr := []; */
+        /* an_result := []; */
+        an_matr :=  ZeroMatrix(B, an_unknown_count, an_unknown_count + 1);
+        an_rank := 0;
 
         bn_numerator_weight := 6*p^n + denom_weight;
         bn_numerator_powers := get_ab_powers(bn_numerator_weight);
         bn_unknown_count := #bn_numerator_powers;
-        bn_matr := [];
-        bn_result := [];
+        /* bn_matr := []; */
+        /* bn_result := []; */
+        bn_matr :=  ZeroMatrix(B, bn_unknown_count, bn_unknown_count + 1);
+        bn_rank := 0;
 
         ci_numerator_powers := [];
         ci_unknown_counts := [];
@@ -78,8 +97,10 @@ function canonical_lifting_odd_char_interpolate_formulas(p, prec)
             Append(~ci_numerator_powers, powers);
             Append(~ci_unknown_counts, #powers);
         end for;
-        ci_matrs := [* [] : l in [1..num_cis] *];
-        ci_results := [* [] : l in [1..num_cis] *];
+        /* ci_matrs := [* [] : l in [1..num_cis] *]; */
+        /* ci_results := [* [] : l in [1..num_cis] *]; */
+        ci_matrs := [* ZeroMatrix(B, unknown_count, unknown_count + 1) : unknown_count in ci_unknown_counts *];
+        ci_ranks := [ 0 : i in ci_unknown_counts ];
 
         di_numerator_powers := [];
         di_unknown_counts := [];
@@ -90,8 +111,11 @@ function canonical_lifting_odd_char_interpolate_formulas(p, prec)
             Append(~di_numerator_powers, powers);
             Append(~di_unknown_counts, #powers);
         end for;
-        di_matrs := [* [] : l in di_numerator_powers *];
-        di_results := [* [] : l in di_numerator_powers *];
+        /* di_matrs := [* [] : l in di_numerator_powers *]; */
+        /* di_results := [* [] : l in di_numerator_powers *]; */
+        di_matrs := [* ZeroMatrix(B, unknown_count, unknown_count + 1) : unknown_count in di_unknown_counts *];
+        di_ranks := [ 0 : i in di_unknown_counts ];
+
 
         // Interpolate
         for j in B do
@@ -127,38 +151,50 @@ function canonical_lifting_odd_char_interpolate_formulas(p, prec)
             done := true;
 
             // Add to system for an
-            if Rank(Matrix(B, an_matr)) lt an_unknown_count then
+            if an_rank lt an_unknown_count then
                 done := false;
-                next_row := [a0^t[1] * b0^t[2] / h0_to_power : t in an_numerator_powers];
-                Append(~an_matr, next_row);
-                Append(~an_result, B!an);
+                next_row := [a0^t[1] * b0^t[2] / h0_to_power : t in an_numerator_powers] cat [B!an];
+                InsertBlock(~an_matr, Matrix(B, 1, an_unknown_count + 1, next_row), an_rank + 1, 1);
+                an_matr := EchelonForm(an_matr);
+                if echelon_rank(an_matr) gt an_rank then
+                    an_rank +:= 1;
+                end if;
             end if;
 
             // Add to system for bn
-            if Rank(Matrix(B, bn_matr)) lt bn_unknown_count then
+            if bn_rank lt bn_unknown_count then
                 done := false;
-                next_row := [a0^t[1] * b0^t[2] / h0_to_power : t in bn_numerator_powers];
-                Append(~bn_matr, next_row);
-                Append(~bn_result, B!bn);
+                next_row := [a0^t[1] * b0^t[2] / h0_to_power : t in bn_numerator_powers] cat [B!bn];
+                InsertBlock(~bn_matr, Matrix(B, 1, bn_unknown_count + 1, next_row), bn_rank + 1, 1);
+                bn_matr := EchelonForm(bn_matr);
+                if echelon_rank(bn_matr) gt bn_rank then
+                    bn_rank +:= 1;
+                end if;
             end if;
 
             // Add to system for c_i
             for k in [1..num_cis] do
-                if Rank(Matrix(B, ci_matrs[k])) lt ci_unknown_counts[k] then
+                if ci_ranks[k] lt ci_unknown_counts[k] then
                     done := false;
-                    next_row := [a0^t[1] * b0^t[2] / h0_to_power : t in ci_numerator_powers[k]];
-                    Append(~(ci_matrs[k]), next_row);
-                    Append(~(ci_results[k]), Coefficient(Fn, x0, (k-1)*p));
+                    next_row := [a0^t[1] * b0^t[2] / h0_to_power : t in ci_numerator_powers[k]] cat [Coefficient(Fn, x0, (k-1)*p)];
+                    InsertBlock(~ci_matrs[k], Matrix(B, 1, ci_unknown_counts[k] + 1, next_row), ci_ranks[k] + 1, 1);
+                    ci_matrs[k] := EchelonForm(ci_matrs[k]);
+                    if echelon_rank(ci_matrs[k]) gt ci_ranks[k] then
+                        ci_ranks[k] +:= 1;
+                    end if;
                 end if;
             end for;
 
             // Add to system for d_i
             for k in [1..num_dis] do
-                if Rank(Matrix(B, di_matrs[k])) lt di_unknown_counts[k] then
+                if di_ranks[k] lt di_unknown_counts[k] then
                     done := false;
-                    next_row := [a0^t[1] * b0^t[2] / h0_to_power : t in di_numerator_powers[k]];
-                    Append(~(di_matrs[k]), next_row);
-                    Append(~(di_results[k]), Coefficient(Hn, x0, k-1));
+                    next_row := [a0^t[1] * b0^t[2] / h0_to_power : t in di_numerator_powers[k]] cat [Coefficient(Hn, x0, k-1)];
+                    InsertBlock(~di_matrs[k], Matrix(B, 1, di_unknown_counts[k] + 1, next_row), di_ranks[k] + 1, 1);
+                    di_matrs[k] := EchelonForm(di_matrs[k]);
+                    if echelon_rank(di_matrs[k]) gt di_ranks[k] then
+                        di_ranks[k] +:= 1;
+                    end if;
                 end if;
             end for;
 
@@ -181,19 +217,22 @@ function canonical_lifting_odd_char_interpolate_formulas(p, prec)
         end for;
 
         // Solve the systems
-        soln := Solution(Transpose(Matrix(B, an_matr)), Vector(B, an_result));
+        // soln := Solution(Transpose(Matrix(B, an_matr)), Vector(B, an_result));
+        soln := Transpose(an_matr)[NumberOfColumns(an_matr)];
         an := &+[ F!soln[k]*a^t[1]*b^t[2] : k -> t in an_numerator_powers ];
         an /:= h^h_power;
         Append(~va, an);
 
-        soln := Solution(Transpose(Matrix(B, bn_matr)), Vector(B, bn_result));
+        // soln := Solution(Transpose(Matrix(B, bn_matr)), Vector(B, bn_result));
+        soln := Transpose(bn_matr)[NumberOfColumns(bn_matr)];
         bn := &+[ F!soln[k]*a^t[1]*b^t[2] : k -> t in bn_numerator_powers ];
         bn /:= h^h_power;
         Append(~vb, bn);
 
         Fn := Fn_hat;
         for i in [1..num_cis] do
-            soln := Solution(Transpose(Matrix(B, ci_matrs[i])), Vector(B, ci_results[i]));
+            // soln := Solution(Transpose(Matrix(B, ci_matrs[i])), Vector(B, ci_results[i]));
+            soln := Transpose(ci_matrs[i])[NumberOfColumns(ci_matrs[i])];
             ci := &+[ F!soln[k]*a^t[1]*b^t[2] : k -> t in ci_numerator_powers[i] ];
             ci /:= h^h_power;
             Fn +:= ci * x^(p*(i-1));
@@ -202,10 +241,14 @@ function canonical_lifting_odd_char_interpolate_formulas(p, prec)
 
         Hn := S!0;
         for i in [1..num_dis] do
-            if #di_matrs[i] eq 0 then
+            /* if #di_matrs[i] eq 0 then */
+            /*     continue; */
+            /* end if; */
+            /* soln := Solution(Transpose(Matrix(B, di_matrs[i])), Vector(B, di_results[i])); */
+            if NumberOfRows(di_matrs[i]) eq 0 then
                 continue;
             end if;
-            soln := Solution(Transpose(Matrix(B, di_matrs[i])), Vector(B, di_results[i]));
+            soln :=  Transpose(di_matrs[i])[NumberOfColumns(di_matrs[i])];
             di := &+[ F!soln[k]*a^t[1]*b^t[2] : k -> t in di_numerator_powers[i] ];
             di /:= h^h_power;
             Hn +:= di * x^(i-1);
@@ -219,21 +262,6 @@ end function;
 
 /* ========================================================== */
 /*              PARALLELIZATION FUNCTIONS                     */
-
-// Magma is not faster computing rank of matrices in echelon form
-// We make our own:
-function echelon_rank(E)
-    // rank of matrix in Echelon form
-    rank := 0;
-    for row in Rows(E) do
-        if not IsZero(row) then
-            rank +:= 1;
-        end if;
-    end for;
-
-    return rank;
-end function;
-
 
 // Get values to be used in the interpolation
 function get_interp_values(p: prec:=2)
