@@ -14,23 +14,23 @@ function canonical_lifting_odd_char_one_step(
     start_time, verbose
 )
     R<x0, y0, Fn, Hn, an, bn> := R;
-    
+
     if verbose then
         printf "\nn = %o\n", n;
         printf "------\n";
     end if;
-    
+
     // Compute Greenberg Transform
     witt_one := [R!1] cat [R!0 : i in [1..n]];
     witt_zero := [0 : i in [1..n+1]];
-    
+
     lhs_gt_poly := [ [* witt_one, 0, 2 *] ]; // y^2
-    
+
     gt_lhs := GT(lhs_gt_poly : vvars := witt_zero cat (vy cat [y0*Hn]));
     lhs0 := gt_lhs[n+1];
-    
+
     log_str("Computed lhs.", start_time, verbose);
-    
+
     if p eq 3 then
         // x^3 + ax^2 + b
         rhs_gt_poly := [[* witt_one,    3, 0 *],
@@ -42,29 +42,29 @@ function canonical_lifting_odd_char_one_step(
                         [* va cat [an], 1, 0 *],
                         [* vb cat [bn], 0, 0 *]];
     end if;
-    
+
     gt_rhs := GT(rhs_gt_poly : vvars := (vF cat [Fn]) cat witt_zero);
     rhs0 := gt_rhs[n+1];
-    
+
     log_str("Computed rhs.", start_time, verbose);
-    
+
     subst_for_2y0_topower_times_Hn := rhs0 - Coefficient(lhs0, Hn, 0);
-        
+
     // Compute Fn_with_unknowns
     Fn_deriv := h^(-(p^n - 1) div (p - 1)) * f^((p^n - 1) div 2) - x0^(p^n - 1);
     for j in [1 .. (n-1)] do
         Fn_deriv := Fn_deriv - vF[j+1]^(p^(n-j) - 1) * Derivative(vF[j+1], x0);
     end for;
-    
+
     Fn_degree_bound := ((n+2)*p^n - n*p^(n-1)) div 2;
 
     num_ci_s := Fn_degree_bound div p + 1;
     S := PolynomialRing(B, 6 + num_ci_s);
-        
+
     // names := ["x0", "y0", "Fn", "Hn", "an", "bn"] cat
     //         ["c" cat IntegerToString(i) : i in [0 .. num_ci_s-1]];
     // AssignNames(~S, names);
-    
+
     Fn_deriv := Evaluate(Fn_deriv, [S.1, S.2, S.3, S.4, S.5, S.6]);
 
     Fn_with_unknowns := S!0;
@@ -78,31 +78,31 @@ function canonical_lifting_odd_char_one_step(
 
     Fn_with_unknowns +:= S.7; // add c0
     P := Parent(Fn_with_unknowns);
-    
+
     log_str("Computed Fn_with_unknowns.", start_time, verbose);
-    
+
     // If necessary, ensure tau*(x/y) is regular at infinity
     if n gt 1 then
         x_over_y := x_over_y_witt[n+1];
-            
+
         // Compute pullback
-        argument := vF cat [Fn]    cat [0 : i in [1..(prec-n-1)]] cat 
+        argument := vF cat [Fn]    cat [0 : i in [1..(prec-n-1)]] cat
                     vy cat [y0*Hn] cat [0 : i in [1..(prec-n-1)]];
 
         pullback_num := Evaluate(Numerator(x_over_y), argument);
         pullback_den := Evaluate(Denominator(x_over_y), argument);
-        
+
         log_str("  Computed pullback num/denom.", start_time, verbose);
-        
-        
+
+
         // Get rid of term with Hn (for now)
         Hn_term := - x0^(p^n) * y0^((n-1)*p^n + 1) * Hn;
         Hn_term_subs := - x0^(p^n)*y0^((n-2)*p^n)*subst_for_2y0_topower_times_Hn div 2;
 
         pullback_num_without_Hn := pullback_num - Hn_term + Hn_term_subs;
-        
+
         log_str("  Substituted Hn.", start_time, verbose);
-        
+
         // Compute scriptF/scriptG and scriptH
         scriptH := R!0;
         scriptF := R!0;
@@ -115,7 +115,7 @@ function canonical_lifting_odd_char_one_step(
             if Degree(term, Fn) ne 0 then
                 scriptH +:= coeff * x0^x0_deg * f^(y0_deg div 2);
             end if;
-            
+
             if Degree(term, Fn) eq 0 and Degree(term, Hn) eq 0 and
                Degree(term, an) eq 0 and Degree(term, bn) eq 0 then
                 if n mod 2 eq 0 then
@@ -130,9 +130,9 @@ function canonical_lifting_odd_char_one_step(
         scriptH := Evaluate(scriptH, [S.1, S.2, S.3, S.4, S.5, S.6]);
         scriptF := Evaluate(scriptF, [S.1, S.2, S.3, S.4, S.5, S.6]);
         scriptG := Evaluate(scriptG, [S.1, S.2, S.3, S.4, S.5, S.6]);
-        
+
         log_str("  Computed scriptF/scriptG and scriptH.", start_time, verbose);
-        
+
         // Compute F_{n,1}
         Mprime := (3*p^(n-1) - 1)/2;
 
@@ -143,7 +143,7 @@ function canonical_lifting_odd_char_one_step(
                 F_n_1 +:= term;
             end if;
         end for;
-        
+
         // Figure out what should be zero
         if n mod 2 eq 0 then
             poly := scriptH * F_n_1 + scriptF;
@@ -159,9 +159,9 @@ function canonical_lifting_odd_char_one_step(
                 should_be_zero +:= term;
             end if;
         end for;
-        
+
         log_str("  Computed what should be zero.", start_time, verbose);
-        
+
         // Solve system
         A := [];
         b := [];
@@ -182,13 +182,13 @@ function canonical_lifting_odd_char_one_step(
 
         A := Matrix(B, A);
         b := VectorSpace(B, #b)!b;
-        
+
         log_str("  Built system.", start_time, verbose);
 
         soln, kernel := Solution(Transpose(A), b);
-        
+
         log_str("  Solved system.", start_time, verbose);
-        
+
         sum_of_kernel_basis := &+Basis(kernel);
 
         subs := [P.i : i in [5..Rank(P)]];
@@ -199,10 +199,10 @@ function canonical_lifting_odd_char_one_step(
         end for;
 
         Fn_with_unknowns := Evaluate(Fn_with_unknowns, [S.1, S.2, S.3, S.4] cat subs);
-        
+
         log_str("  Simplified Fn_with_unknowns.", start_time, verbose);
     end if;
-    
+
     // Solve for rest of d_i's and c_i's
     num_di_s := ((n+3)*p^n - n*p^(n-1) - 3) div 2 + 1;
     S := PolynomialRing(B, 6 + num_ci_s + num_di_s);
@@ -215,15 +215,15 @@ function canonical_lifting_odd_char_one_step(
     offset := 6 + num_ci_s;
 
     Hn_with_unknowns := &+[S.(offset + i + 1) * S.1^i : i in [0..num_di_s-1]];
-    
+
     log_str("Computed Hn_with_unknowns.", start_time, verbose);
-    
+
     lhs1 := S!0;
     for term in Terms(lhs0) do
         x0_deg := Degree(term, 1);
         y0_deg := Degree(term, 2);
         Hn_deg := Degree(term, 4);
-        
+
         coeff := term div (y0^y0_deg * Hn^Hn_deg) * f^(y0_deg div 2);
         lhs1 +:= Evaluate(coeff, [S.i : i in [1..6]]) * Hn_with_unknowns^Hn_deg;
     end for;
@@ -232,9 +232,9 @@ function canonical_lifting_odd_char_one_step(
     rhs1 := Evaluate(rhs0, [S.1, S.2, Fn_with_unknowns, Hn_with_unknowns, S.5, S.6]);
 
     should_be_zero := lhs1 - rhs1;
-    
+
     log_str("Computed what should be zero.", start_time, verbose);
-    
+
     // Solve the system
     A := [];
     b := [];
@@ -252,7 +252,7 @@ function canonical_lifting_odd_char_one_step(
         Append(~A, row);
         Append(~b, -MonomialCoefficient(coeff, 1));
     end for;
-    
+
     // Include condition that c_{p^(n-1)} is zero.
     row := [];
     for i in [5..Rank(P)] do
@@ -267,13 +267,13 @@ function canonical_lifting_odd_char_one_step(
 
     A := Matrix(B, A);
     b := VectorSpace(B, #b)!b;
-        
+
     log_str("Built system.", start_time, verbose);
 
     soln := Solution(Transpose(A), b);
-    
+
     log_str("Solved system.", start_time, verbose);
-    
+
     // Substitute solutions
     subs := [P.1, P.2, P.3, P.4] cat [P!soln[i] : i in [1..Rank(P)-4]];
     Fn_with_unknowns := Evaluate(Fn_with_unknowns, subs);
@@ -283,22 +283,22 @@ function canonical_lifting_odd_char_one_step(
     subs := [x0, y0] cat [0 : i in [1..Rank(P)-2]];
     Fn_with_unknowns := Evaluate(Fn_with_unknowns, subs);
     Hn_with_unknowns := Evaluate(Hn_with_unknowns, subs);
-    
+
     return soln[1], soln[2], Fn_with_unknowns, Hn_with_unknowns;
 end function;
 
 function canonical_lifting_odd_char(a0, b0, prec, verbose)
     B := Parent(a0);
     p := Characteristic(B);
-    
+
     start_time := Realtime();
     log_str("Starting...", start_time, verbose);
-    
+
     R<x0,y0,Fn,Hn,an,bn> := PolynomialRing(B, 6);
-    
+
     va := [R!a0]; vb := [R!b0];
     vF := [x0]; vH := [R!1]; vy := [y0];
-    
+
     if p eq 3 then
         f := x0^3 + a0*x0^2 + b0;
         h := a0;
@@ -306,13 +306,13 @@ function canonical_lifting_odd_char(a0, b0, prec, verbose)
         f := x0^3 + a0*x0 + b0;
         h := B!Coefficient(f^((p-1) div 2), x0, p-1);
     end if;
-    
+
     f_prime := Derivative(f, x0);
-    
+
     log_str("Computed Hasse invariant.", start_time, verbose);
-    
+
     // Compute x/y up to prec, if needed
-    
+
     if prec gt 2 then
         P := FieldOfFractions(PolynomialRing(GF(p), prec*2));
         x_vec := [P.i : i in [1..prec]];
@@ -323,7 +323,7 @@ function canonical_lifting_odd_char(a0, b0, prec, verbose)
     else
         x_over_y_witt := 0;
     end if;
-    
+
     for n in [1..prec-1] do
         an, bn, Fn, Hn := canonical_lifting_odd_char_one_step(
             a0, b0, p, n, prec,
@@ -332,15 +332,15 @@ function canonical_lifting_odd_char(a0, b0, prec, verbose)
             B, R, x_over_y_witt,
             start_time, verbose
         );
-        
+
         Append(~va, an);
         Append(~vb, bn);
         Append(~vF, Fn);
         Append(~vH, Hn);
         Append(~vy, y0*Hn);
-        
+
         log_str("Appended.", start_time, verbose);
     end for;
-    
+
     return va, vb, vF, vy;
 end function;
