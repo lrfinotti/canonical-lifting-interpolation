@@ -4,7 +4,7 @@
 
 We have versions that computes the formulas for canonical liftings and corresponding elliptic Teichmüller lift for a given prime $p \geq 5$.  The second coordinates are proved, but from the third and later coordinates it depends on a conjecture on the powers that appear on denominators (made explicit in Jacob's Ph.D. thesis).
 
-Code is provided for both [Sage](https://www.sagemath.org/) and [Magma](http://magma.maths.usyd.edu.au/magma/).  The former is free and open source, and thus widely available, but the latter is much faster.
+Code is provided for both [Sage](https://www.sagemath.org/) and [Magma](http://magma.maths.usyd.edu.au/magma/).  The former is free and open source, and thus widely available, but the latter is considerably faster.
 
 The interpolation code was implemented by Jacob Dennerlein.  On the other hand, the main advantage of doing the computation through interpolation is that possibility of doing it in parallel, so we provide parallel versions of the code here as well.
 
@@ -49,9 +49,8 @@ The file `magma/test_all.sh` is another BASH script that compares the times and 
 We assume here you start Sage from `sage/` folder in the code folder.
 
 Here is how we can compute two coordinates the canonical lifting and elliptic Teichüller lift of the curve:
-$$
-E/\mathbb{F}_{11}: \; _y^2 = x^2 + 5x + 2.
-$$
+
+$$E/\mathbb{F}_{11}: \; _y^2 = x^2 + 5x + 2.$$
 
 ```
 sage: load("witt/witt.sage")
@@ -168,9 +167,8 @@ done!
 We assume here you start Magma from the `magma` folder in the code folder.  We also assume the code from [Witt Vectors and Canonical Liftings](https://github.com/lrfinotti/witt) is in `~/code/witt/`.
 
 Here is how we can compute two coordinates the canonical lifting and elliptic Teichüller lift of the curve:
-$$
-E/\mathbb{F}_{11}: \; _y^2 = x^2 + 5x + 2.
-$$
+
+$$E/\mathbb{F}_{11}: \; _y^2 = x^2 + 5x + 2.$$
 
 ```
 > load "canonical_lifting.magma";
