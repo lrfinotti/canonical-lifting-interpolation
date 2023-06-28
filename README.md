@@ -1,6 +1,6 @@
 # Canonical Lifting by Interpolation
 
-*The code here was forked from Jacob Dennerlein's [Canonical Lifting Comparison](https://github.com/lrfinotti/canonical-lifting-interpolation)*.*
+*The code here was forked from Jacob Dennerlein's [Canonical Lifting Comparison](https://github.com/lrfinotti/canonical-lifting-interpolation)*.
 
 We have versions that computes the formulas for canonical liftings and corresponding elliptic Teichmüller lift for a given prime $p \geq 5$.  The second coordinates are proved, but from the third and later coordinates it depends on a conjecture on the powers that appear on denominators (made explicit in Jacob's Ph.D. thesis).
 
