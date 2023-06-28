@@ -21,7 +21,7 @@ prec := 2;  // for parallel, only second coordinate
 
 F<a,b> := RationalFunctionField(GF(p), 2);
 va, vb, vF, vG := canonical_lifting_odd_char(a, b, prec, false);
-Write("results_usual_${p}_2.txt", [* va, vb, vF, vG *] : Overwrite:=true);
+Write("results_${TIMESTAMP}_usual_${p}_2.txt", [* va, vb, vF, vG *] : Overwrite:=true);
 // print va, vb, vF, vG;
 EOF
 
@@ -33,7 +33,7 @@ echo ""
 echo ""
 
 # convert x0->x and y0->y
-sed -i -e 's/x0/x/g' -e 's/y0/y/g' "results_usual_${p}_2.txt"
+sed -i -e 's/x0/x/g' -e 's/y0/y/g' "results_${TIMESTAMP}_usual_${p}_2.txt"
 
 
 rm -f "usual_${TIMESTAMP}.magma"
@@ -47,7 +47,7 @@ p := ${p};
 prec := 2;  // for parallel, only second coordinate
 
 va, vb, vF, vG := canonical_lifting_odd_char_interpolate_formulas(p, prec);
-Write("results_interpol_${p}_2.txt", [* va, vb, vF, vG *] : Overwrite:=true);
+Write("results_${TIMESTAMP}_interpol_${p}_2.txt", [* va, vb, vF, vG *] : Overwrite:=true);
 // print va, vb, vF, vG;
 EOF
 
@@ -72,8 +72,8 @@ p := ${p};
 F<a,b> := RationalFunctionField(GF(p), 2);
 PR<x, y> := PolynomialRing(F, 2);
 
-res1 := Read("results_usual_${p}_2.txt");
-res2 := Read("results_interpol_${p}_2.txt");
+res1 := Read("results_${TIMESTAMP}_usual_${p}_2.txt");
+res2 := Read("results_${TIMESTAMP}_interpol_${p}_2.txt");
 res3 := Read("results_${p}_2.txt");
 
 print (res1[1] eq res2[1]) and (res1[2] eq res2[2]) and (res1[3] eq res2[3]) and (res1[4] eq res2[4]) and
@@ -85,4 +85,4 @@ echo "Are results equal?"
 
 magma -b < "compare_${TIMESTAMP}.magma"
 
-rm -f "compare_${TIMESTAMP}.magma"
+rm -f "compare_${TIMESTAMP}.magma" "results_${TIMESTAMP}_"*
