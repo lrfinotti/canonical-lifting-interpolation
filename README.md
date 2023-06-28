@@ -50,7 +50,7 @@ We assume here you start Sage from `sage/` folder in the code folder.
 
 Here is how we can compute two coordinates the canonical lifting and elliptic Teichüller lift of the curve:
 
-$$E/\mathbb{F}_{11}: \; _y^2 = x^2 + 5x + 2.$$
+$$E/\mathbb{F}_{11}: \; y^2 = x^2 + 5x + 2.$$
 
 ```
 sage: load("witt/witt.sage")
@@ -168,7 +168,7 @@ We assume here you start Magma from the `magma` folder in the code folder.  We a
 
 Here is how we can compute two coordinates the canonical lifting and elliptic Teichüller lift of the curve:
 
-$$E/\mathbb{F}_{11}: \; _y^2 = x^2 + 5x + 2.$$
+$$E/\mathbb{F}_{11}: \; y^2 = x^2 + 5x + 2.$$
 
 ```
 > load "canonical_lifting.magma";
