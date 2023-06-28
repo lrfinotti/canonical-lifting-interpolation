@@ -34,7 +34,7 @@ def test_all(p, prec, n_proc):
 
     P1 = res1[1][1][1].parent()
     P2 = res2[1][1][1].parent()
-    P3 = res2[1][1][1].parent()
+    P3 = res3[1][1][1].parent()
 
 
     phi = P1.hom([P2.0, P2.1, 0, 0, 0, 0])
