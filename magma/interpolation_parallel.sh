@@ -169,5 +169,7 @@ do
     # magma -b < $WORKER_S &
 done
 
+sleep 0.5
+
 # clean up files
 rm -f $MAIN $WORKER_L $WORKER_S
