@@ -1,3 +1,4 @@
+SetPath(":~/code/witt");
 load "gt.m";
 
 procedure log_str(s, start_time, verbose)
